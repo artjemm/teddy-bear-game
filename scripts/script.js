@@ -31,7 +31,7 @@ const SPARKLE_DURATION_MS = 700; // Exemplo: 0.7 segundos
 function startTimer() {
     setInterval(() => {
         seconds++;
-        coins += 10;
+        // coins += 10; // REMOVIDO - As moedas agora virão de mensagens postadas
         updateDisplay();
     }, 1000);
 }
@@ -52,6 +52,24 @@ function updateDisplay() {
     }
     if (confirmationCoinsValueElement) {
         confirmationCoinsValueElement.innerText = coins; // Atualiza apenas o número no menu
+    }
+}
+
+// NOVA FUNÇÃO PARA LIDAR COM MENSAGENS DE MOEDAS
+function handleCoinMessage(event) {
+    // IMPORTANTE: Por segurança, em um ambiente de produção,
+    // você deve verificar event.origin para garantir que as mensagens
+    // estão vindo do seu domínio Framer esperado.
+    // Exemplo: if (event.origin !== "https://seu-site.framer.app") return;
+
+    if (event.data && typeof event.data.value === 'number') {
+        coins += event.data.value;
+        updateDisplay();
+        console.log(`Recebeu ${event.data.value} moedas. Total de moedas: ${coins}`);
+        // Opcional: Adicionar um som ao receber moedas
+        // Ex: if (audioMoedaRecebida) audioMoedaRecebida.play();
+    } else {
+        // console.warn("Mensagem recebida não contém 'value' numérico:", event.data);
     }
 }
 
@@ -217,8 +235,11 @@ function setupCarousel() {
 
 
 document.addEventListener("DOMContentLoaded", () => {
-    startTimer();
+    startTimer(); // Mantido para o relógio de segundos
     updateDisplay();
+
+    // ADICIONA O OUVINTE PARA MENSAGENS DA JANELA PAI (FRAMER)
+    window.addEventListener("message", handleCoinMessage);
 
     const hatElements = document.querySelectorAll(".hat"); // Corrigido de hatImages para hatElements
     hatElements.forEach(hatElement => { // Corrigido de hatImageElement para hatElement
