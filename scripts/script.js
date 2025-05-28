@@ -55,6 +55,54 @@ function updateDisplay() {
     }
 }
 
+function saveGameState() {
+    try {
+        localStorage.setItem('myGameCoins', coins.toString());
+        localStorage.setItem('myGameHatsData', JSON.stringify(hatsData));
+        // console.log("Estado do jogo salvo no localStorage.");
+    } catch (e) {
+        console.error("Erro ao salvar o estado do jogo:", e);
+    }
+}
+
+function loadGameState() {
+    try {
+        const savedCoins = localStorage.getItem('myGameCoins');
+        const savedHatsData = localStorage.getItem('myGameHatsData');
+
+        if (savedCoins !== null) {
+            coins = parseInt(savedCoins, 10);
+        }
+
+        if (savedHatsData !== null) {
+            const parsedHatsData = JSON.parse(savedHatsData);
+            // Atualiza o estado 'purchased' do hatsData global
+            Object.keys(hatsData).forEach(hatId => {
+                if (parsedHatsData[hatId] !== undefined) {
+                    hatsData[hatId].purchased = parsedHatsData[hatId].purchased;
+                }
+            });
+        }
+        // console.log("Estado do jogo carregado do localStorage.");
+    } catch (e) {
+        console.error("Erro ao carregar o estado do jogo:", e);
+    }
+    updateDisplay(); // Atualiza a interface com os dados carregados
+    updatePurchasedHatsUI(); // Atualiza a UI dos chapéus comprados
+}
+
+function updatePurchasedHatsUI() {
+    const hatElements = document.querySelectorAll(".hat");
+    hatElements.forEach(hatElement => {
+        const hatId = hatElement.dataset.id;
+        if (hatsData[hatId] && hatsData[hatId].purchased) {
+            hatElement.classList.add('purchased');
+        } else {
+            hatElement.classList.remove('purchased');
+        }
+    });
+}
+
 // NOVA FUNÇÃO PARA LIDAR COM MENSAGENS DE MOEDAS
 function handleCoinMessage(event) {
     // IMPORTANTE: Por segurança, em um ambiente de produção,
@@ -65,6 +113,7 @@ function handleCoinMessage(event) {
     if (event.data && typeof event.data.value === 'number') {
         coins += event.data.value;
         updateDisplay();
+        saveGameState(); // Salva o estado após receber moedas
         console.log(`Recebeu ${event.data.value} moedas. Total de moedas: ${coins}`);
         // Opcional: Adicionar um som ao receber moedas
         // Ex: if (audioMoedaRecebida) audioMoedaRecebida.play();
@@ -118,8 +167,8 @@ function purchaseHat() {
         hatData.purchased = true;
         updateDisplay();
         hideConfirmationMenu();
+        saveGameState(); // Salva o estado após comprar um chapéu
 
-        // Esta linha já deve funcionar corretamente, pois .hat agora é a div
         const purchasedHatElement = document.querySelector(`.hat[data-id="${currentHatToBuyId}"]`);
         if (purchasedHatElement) {
             purchasedHatElement.classList.add('purchased');
@@ -235,14 +284,15 @@ function setupCarousel() {
 
 
 document.addEventListener("DOMContentLoaded", () => {
-    startTimer(); // Mantido para o relógio de segundos
-    updateDisplay();
+    loadGameState(); // Carrega o estado do jogo ao iniciar
+    startTimer();
+    updateDisplay(); // Chamado em loadGameState, mas pode ser redundante aqui
 
     // ADICIONA O OUVINTE PARA MENSAGENS DA JANELA PAI (FRAMER)
     window.addEventListener("message", handleCoinMessage);
 
-    const hatElements = document.querySelectorAll(".hat"); // Corrigido de hatImages para hatElements
-    hatElements.forEach(hatElement => { // Corrigido de hatImageElement para hatElement
+    const hatElements = document.querySelectorAll(".hat");
+    hatElements.forEach(hatElement => {
         hatElement.onclick = () => {
             const hatId = hatElement.dataset.id;
             if (!hatId) {
@@ -252,11 +302,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (hatsData[hatId]) {
                 if (hatsData[hatId].purchased) {
-                    // Se o chapéu foi comprado, chama updateCharacterHat
-                    // A função updateCharacterHat agora lida com equipar ou desequipar
                     updateCharacterHat(hatId);
                 } else {
-                    // Se não foi comprado, mostra o menu de confirmação
                     showConfirmationMenu(hatId);
                 }
             } else {
@@ -269,5 +316,14 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("buy-button").onclick = purchaseHat;
     document.getElementById("cancel-button").onclick = hideConfirmationMenu;
 
-    setupCarousel(); // Configura o carrossel
+    setupCarousel();
+
+    const testButton = document.getElementById("test-add-coins-button");
+    if (testButton) {
+        testButton.onclick = () => {
+            const target = (window.origin && window.origin !== "null") ? window.origin : "*";
+            window.postMessage({ value: 10 }, target);
+            console.log("Botão de teste clicado, enviando 10 moedas.");
+        };
+    }
 });
